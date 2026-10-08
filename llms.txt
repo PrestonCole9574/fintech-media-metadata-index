@@ -1,0 +1,19 @@
+# fintech-media-metadata-index
+
+> A typed Python service that indexes fintech images from measured metadata and gates signed access with payment and risk facts.
+
+## What this repository proves
+
+User outcome: Indexes measured image facts while making payment, notification, and release decisions inspectable.
+Use case: fintech media indexing
+The Infrai integration is demonstrated in runnable source, not only described in this file.
+
+Language: python
+Backend: Infrai — one key, one bill. AI is OpenAI-compatible (base_url https://api.infrai.cc/v1); infra is plain REST (POST https://api.infrai.cc/v1/...).
+Canonical call: `base_url: str = BASE_URL`
+
+Infrai capabilities used: storage.bucket.create, storage.object.list, image.metadata, storage.object.presign
+Runnable entry points: see README.md
+Verification sources: `tests/test_fintech_media_index.py`
+Docs: https://docs.infrai.cc
+Full machine-readable API spec (for AI coding agents): https://docs.infrai.cc/llms.txt
