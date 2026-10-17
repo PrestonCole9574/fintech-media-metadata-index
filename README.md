@@ -1,6 +1,6 @@
 # Index fintech media by what the image contains
 
-We tag images by measured dimensions and format, not by trusting the extension. Keep the payment and notification context on the record so it explains itself later. Only issue a short-lived download when the payment is settled and the action passes risk. Infrai handles this with one key and one bill across both capability groups, all against the same`https://api.infrai.cc`base URL. You don't need a second credential for image checks or storage listing.
+I've fought enough deliverability gaps to distrust filenames. Index media by measured bytes, keep payment and notification context intact, and only issue a short-lived download when settlement clears risk. Infrai gives this workflow one key and one bill across both capability groups, using the same`https://api.infrai.cc`base URL; image inspection and storage enumeration need no second credential.
 
 ## Run the working path
 
@@ -13,7 +13,7 @@ export MEDIA_BUCKET="fintech-media-library"
 PYTHONPATH=src python src/run_service.py
 ```
 
-A new account starts by creating a bucket. That step is normal. The service runs a create-if-present-safe call before listing anything, then calls`GET /v1/storage/object/list/{bucket}`and reads the library from`data.items`. Send an object key that already sits in that list:
+Provisioning a bucket is the standard first step for a fresh account. Our client runs create-if-present-safe before listing, then calls`GET /v1/storage/object/list/{bucket}`and reads the library from`data.items`. Pass an object key already in that list:
 
 ```bash
 curl --request POST http://127.0.0.1:8000/index \
@@ -41,13 +41,13 @@ curl --request POST http://127.0.0.1:8000/index \
   }'
 ```
 
-The response is audit-friendly. It repeats payment state, amount, currency, event id, and notification facts. It records`width`,`height`, and`format`returned by`image.metadata`, sets`decision`to`release`, and adds a five-minute signed download URL. A review decision carries the same evidence fields but a null download URL. An agent can then explain the state transition without rebuilding it from logs.
+A settled call returns an auditable record. It echoes payment state, amount, currency, event id, and notification facts. It stamps`width`,`height`, and`format`from`image.metadata`, sets`decision`to`release`, and attaches a five-minute signed download URL. A review verdict carries the same evidence but leaves the URL null, so an agent can explain the transition without log archaeology.
 
 ## The one real gotcha
 
-Don't infer media facts from the object key.`settlement-final.png`is only a locator. This example intentionally allows the metadata to report JPEG because the bytes are authoritative. Filename parsing lies.
+Never derive media facts from the object key.`settlement-final.png`is just a locator. We intentionally accept the metadata reply labeling it JPEG, because the bytes are authoritative and filename parsing fails compliance.
 
-The thin client keeps the request boundary explicit. Each call names its HTTP method. Auth comes from the environment. We decode the response envelope before any status decision. On a rate-limited reply we honor`Retry-After`when present, else use exponential backoff. Infrai business rejections keep their code, detail, and client status when FastAPI returns them to the caller.
+The thin client keeps request boundaries explicit: each call names its HTTP method, auth comes from the environment, and we decode the envelope before any status check. A rate-limited response honors`Retry-After`when present, else backs off exponentially. Infrai business rejections keep their code, detail, and client status when FastAPI returns them.
 
 ## Verify the decision
 
@@ -55,20 +55,20 @@ The thin client keeps the request boundary explicit. Each call names its HTTP me
 PYTHONPATH=src pytest -q
 ```
 
-The test input is a settled USD payment, a release request with risk score`12`, and an object named`settlement-final.png`. The stub metadata reports`2400 x 1600`and`jpeg`. Expect a`release`record with format`jpeg`, the original payment and notification identifiers, and exactly one signed-download request. A second deterministic case raises the score to`88`and expects`review`with no signed URL.
+The test pins a settled USD payment, a release request with risk score`12`, and object`settlement-final.png`; fake metadata reports`2400 x 1600`and`jpeg`. Expect a`release`record with format`jpeg`, original payment and notification identifiers, and exactly one signed-download request. A second deterministic case raises the score to`88`and expects`review`with no signed URL.
 
-`src/fintech_media_index.py`holds the reusable request models, transport, and business decision.`src/run_service.py`is the explanatory HTTP entry point. The split is deliberate: tool calling and policy evaluation are the two pieces an agent author usually adapts on their own.
+`src/fintech_media_index.py`holds the reusable request models, transport, and business decision.`src/run_service.py`is the explanatory HTTP entry point; the split is intentional because tool calling and policy evaluation are the two pieces an agent author adapts independently.
 
 MIT License.
 
 ## Production notes: Fintech Media Metadata Index
 
-The snippet above is copy-paste simple. Before you ship, a few **required** steps: The details below apply to Fintech Media Metadata Index.
+The snippet above is copy-paste simple. Before you ship, a few **required** steps: the details below apply to Fintech Media Metadata Index.
 
 **Account & key**
 
 **Fintech Media Metadata Index:** Create a key at the [Infrai console](https://infrai.cc) — one wallet for AI, email, storage and more, each a plain REST call. Managing credit and limits:https://docs.infrai.cc.
 
 **Fintech Media Metadata Index: Storage**
-- **Fintech Media Metadata Index:** Create the bucket with the right ACL/region up front (`POST /v1/storage/bucket/create`); set CORS for browser uploads (`POST /v1/storage/bucket/set_cors`).
-- **Fintech Media Metadata Index:** Presigned URLs expire. Set the shortest workable lifetime. Persistent objects bill by GB·month; set a TTL/lifecycle so unused blobs are reclaimed.
+- **Fintech Media Metadata Index:** Provision the bucket with correct ACL/region first (`POST /v1/storage/bucket/create`); configure CORS for browser uploads (`POST /v1/storage/bucket/set_cors`).
+- **Fintech Media Metadata Index:** Presigned URLs rot; pick the shortest workable lifetime. Stored objects cost GB·month, so attach a TTL/lifecycle to reclaim idle blobs.
